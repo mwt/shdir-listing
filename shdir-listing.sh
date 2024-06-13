@@ -93,12 +93,15 @@ shdir_listing_html()
 <html>
 <body>
 <h2>Index of $doc_root</h2>
-<li><a href=\"..\">..</a></li>
 <ul>"
+
+    # Add parent directory link if not root directory
+    [ "$1" = "$2" ] || echo "<li><a href=\"..\">..</a></li>"
 
     find "$1" -maxdepth 1 | sort | while read -r _dir
     do
         _dirname="$( basename "$_dir" )"
+        # Skip current directory and index.html
         [ "$_dir" = "$1" ] && continue
         [ "$_dirname" = "index.html" ] && continue
 
