@@ -2,7 +2,9 @@
 #
 # @author Rio Astamal <rio@rioastamal.net>
 
-readonly SHDIR_SCRIPT_NAME=$(basename $0)
+set -e
+
+SHDIR_SCRIPT_NAME="$(basename "$0")"
 
 SHDIR_VERSION="2021-06-29"
 SHDIR_DRY_RUN="no"
@@ -82,31 +84,31 @@ shdir_listing_html()
         return 1
     }
 
-    local output_file=$1/index.html
-    local doc_root=$( echo "$1" | sed "s#$2##g" )
+    local doc_root
+    doc_root="${1#"$2"}"
     [ -z "$doc_root" ] && doc_root="/"
     echo "$doc_root" | grep -q '/$' || doc_root="$doc_root/"
 
-    local html="<!DOCTYPE html>
+    echo "<!DOCTYPE html>
 <html>
 <body>
-<h2>Directory Listing $doc_root</h2>
+<h2>Index of $doc_root</h2>
+<li><a href=\"..\">..</a></li>
 <ul>"
 
-    for _dir in $( find $1 -maxdepth 1 | sort )
+    find "$1" -maxdepth 1 | sort | while read -r _dir
     do
-        local _dirname=$( basename $_dir )
+        _dirname="$( basename "$_dir" )"
+        [ "$_dir" = "$1" ] && continue
         [ "$_dirname" = "index.html" ] && continue
 
-        local suffix="/"
+        local suffix=""
+        [ -d "$_dir" ] && suffix="/"
 
-        [ -f "$_dir" ] && suffix=""
-
-        html="${html}\n<li><a href=\"${_dirname}${suffix}\">${_dirname}</a></li>"
+        echo "<li><a href=\"${_dirname}${suffix}\">${_dirname}</a></li>"
     done
 
-    html="${html}\n</ul><p>Generated on $( date -R )</p></body></html>"
-    echo -e $html
+    echo "</ul><p>Generated on $( date -R )</p></body></html>"
 }
 
 shdir_create_index_file()
@@ -127,7 +129,7 @@ shdir_create_index_file()
 
     [ "$SHDIR_DRY_RUN" = "yes" ] && suffix="[DRY RUN] "
 
-    for _dir in $( find $1 -maxdepth $depth -type d | sort -r )
+    find "$1" -maxdepth "$depth" -type d | sort -r | while read -r _dir
     do
         echo -n "${suffix}Creating index.html for ${_dir}..."
 
@@ -142,11 +144,11 @@ shdir_create_index_file()
         }
 
         [ "$SHDIR_EMPTY_HTML" = "yes" ] && {
-            echo > $_dir/index.html && echo "DONE."
+            echo > "$_dir/index.html" && echo "DONE."
             continue
         }
 
-        shdir_listing_html "$_dir" "$root_dir" > $_dir/index.html
+        shdir_listing_html "$_dir" "$root_dir" > "$_dir/index.html"
         echo "DONE.";
     done
 }
@@ -182,19 +184,19 @@ do
 
         \?)
             shdir_see_help
-            exit 400
+            exit 1
         ;;
     esac
 done
 
 [ $# -eq 0 ] && {
     shdir_see_help
-    exit 400
+    exit 1
 }
 
 # Remove getopts args from the arguments $ var
 shift $(( OPTIND - 1 ))
 
-shdir_create_index_file "$1" $SHDIR_DEPTH
+shdir_create_index_file "$1" "$SHDIR_DEPTH"
 
 exit 0
